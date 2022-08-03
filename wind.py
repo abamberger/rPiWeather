@@ -4,6 +4,8 @@ import numpy as np
 import datetime
 import psycopg2
 
+import secrets
+
 WIND_GPIO=4
 pi = pigpio.pi()
 pi.set_mode(WIND_GPIO, pigpio.INPUT)
@@ -20,16 +22,16 @@ now=datetime.datetime.now()
 
 while True:
    try:
-      while now.minute%10 <> 0 or insert == 1:
+      while now.minute%10 != 0 or insert == 1:
          time.sleep(3)
          count = wind_cb.tally()
          speed = ((count-old_count)/3)*0.05103+0.14727
          values = np.append(values,speed)
          old_count = count
          now=datetime.datetime.now()
-         if insert == 1 and now.minute%10 <> 0:
+         if insert == 1 and now.minute%10 != 0:
             insert = 0
-      con = psycopg2.connect(host='10.0.0.247', database='weather', user='met', password='metp@ss')
+      con = psycopg2.connect(host=secrets.host, database=secrets.database, user=secrets.user, password=secrets.password)
       cur = con.cursor()
       cur.execute('insert into stationdata values (round_10min(now_utc() + interval \'1 second\'), 3, %s)' % (np.mean(values)))
       cur.execute('insert into stationdata values (round_10min(now_utc() + interval \'1 second\'), 4, %s)' % (np.std(values)))

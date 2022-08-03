@@ -3,8 +3,7 @@ import pigpio
 import datetime
 import psycopg2
 
-#con = psycopg2.connect(database='weather', user='alex')
-#cur = con.cursor()
+import secrets
 
 RAIN_GPIO=18
 pi = pigpio.pi()
@@ -28,12 +27,12 @@ cb = pi.callback(RAIN_GPIO, pigpio.FALLING_EDGE, cbf)
 
 while True:
    try:
-      while now.minute%10.0 <> 0 or insert == 1:
+      while now.minute%10.0 != 0 or insert == 1:
          time.sleep(30)
          now=datetime.datetime.now()
-         if insert == 1 and now.minute%10.0 <> 0:
+         if insert == 1 and now.minute%10.0 != 0:
             insert = 0
-      con = psycopg2.connect(host='10.0.0.247', database='weather', user='met', password='metp@ss')
+      con = psycopg2.connect(host=secrets.host, database=secrets.database, user=secrets.user, password=secrets.password)
       cur = con.cursor()
       cur.execute('insert into stationdata values (round_10min(now_utc() + interval \'1 second\'), 11, %s)' % ((count-old_count)*0.79719))
       con.commit()

@@ -1,35 +1,34 @@
-from Adafruit_BMP085 import BMP085
+import Adafruit_BMP.BMP085 as BMP085
 from smbus import SMBus
 import time
 import psycopg2
 import datetime
 import numpy as np
 
-time.sleep(10)
+import secrets
 
-#con = psycopg2.connect(database='weather', user='alex')
-#cur = con.cursor()
+time.sleep(1)
 
 tempparr = np.array([])
 pressurearr = np.array([])
 tempharr = np.array([])
 humidarr = np.array([])
 
-bmp = BMP085(0x77)
+bmp = BMP085.BMP085(busnum = 1)
 
 HIH6130 = SMBus(1)
 var = [0, 0, 0, 0]
 
-insert = 0
+insert = 0 #change to zero
 now=datetime.datetime.now()
 
 while True:
 	try:
-		while now.minute%10 <> 0 or insert == 1:
+		while now.minute%10 != 0 or insert == 1:
 			time.sleep(30)
 			#BMP180 Read
-			tempp = bmp.readTemperature()
-			pressure = bmp.readPressure()/100.00
+			tempp = bmp.read_temperature()
+			pressure = bmp.read_pressure()/100.00
 			#HIH6130 Read
 			HIH6130.write_quick(0x27)
 			time.sleep(0.050)
@@ -37,8 +36,11 @@ while True:
 			status = (var[0] & 0xc0) >> 6
 			humidity = (((var[0] & 0x3f) << 8) + var[1]) * 100.0 / 16383.0
 			temph = ((var[2] << 6) + ((var[3] & 0xfc) >> 2)) * 165.0 / 16383.0 - 40.0
-			print tempp
-			print temph
+			#print(tempp)
+			print(temph)
+			print(humidity)
+			print(tempp)
+			print(pressure)
 			#Store in arrays
 			if tempp < 50:
 				tempparr = np.append(tempparr,tempp)
@@ -49,7 +51,7 @@ while True:
 			if humidity > -1 and humidity < 101:
 				humidarr = np.append(humidarr,humidity)
 			now=datetime.datetime.now()
-			if insert == 1 and now.minute%10 <> 0:
+			if insert == 1 and now.minute%10 != 0:
 				insert = 0
 			#print tempparr
 			#print tempharr
@@ -63,7 +65,7 @@ while True:
 		dpti = 243.04*(np.log(humidi/100.0)+((17.625*temppi)/(243.04+temppi)))/(17.625-np.log(humidi/100.0)-((17.625*temppi)/(243.04+temppi)))
 		slpi = pressurei*np.exp(1637.0/(29.3*(temppi+273)))
 		#insert into db
-		con = psycopg2.connect(host='10.0.0.247', database='weather', user='met', password='metp@ss')
+		con = psycopg2.connect(host=secrets.host, database=secrets.database, user=secrets.user, password=secrets.password)
 		cur = con.cursor()
 		if len(tempparr) > 0:
 			cur.execute('insert into stationdata values (round_10min(now_utc() + interval \'1 second\'), 1, %s)' % (temppi))
@@ -83,7 +85,7 @@ while True:
 		tempharr = np.array([])
 		humidarr = np.array([])
 		insert = 1
-		now=datetime.datetime.now()
+		now = datetime.datetime.now()
 	except KeyboardInterrupt:
 		con.close()
 		raise
